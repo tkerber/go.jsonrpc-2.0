@@ -4,7 +4,7 @@
 
 // Package jsonrpc implements a JSON-RPC ClientCodec and ServerCodec
 // for the rpc package.
-package jsonrpc
+package jsonrpc2
 
 import (
 	"encoding/json"
