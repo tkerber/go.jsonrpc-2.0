@@ -43,28 +43,32 @@ func NewClientCodec(conn io.ReadWriteCloser) rpc.ClientCodec {
 }
 
 type clientRequest struct {
-	Method string         `json:"method"`
-	Params [1]interface{} `json:"params"`
-	Id     uint64         `json:"id"`
+	Jsonrpc string      `json:"jsonrpc"`
+	Method  string      `json:"method"`
+	Params  interface{} `json:"params"`
+	Id      uint64      `json:"id"`
 }
 
 func (c *clientCodec) WriteRequest(r *rpc.Request, param interface{}) error {
 	c.mutex.Lock()
 	c.pending[r.Seq] = r.ServiceMethod
 	c.mutex.Unlock()
+	c.req.Jsonrpc = "2.0"
 	c.req.Method = r.ServiceMethod
-	c.req.Params[0] = param
+	c.req.Params = param
 	c.req.Id = r.Seq
 	return c.enc.Encode(&c.req)
 }
 
 type clientResponse struct {
-	Id     uint64           `json:"id"`
-	Result *json.RawMessage `json:"result"`
-	Error  interface{}      `json:"error"`
+	Jsonrpc string           `json:"jsonrpc"`
+	Id      uint64           `json:"id"`
+	Result  *json.RawMessage `json:"result"`
+	Error   interface{}      `json:"error"`
 }
 
 func (r *clientResponse) reset() {
+	r.Jsonrpc = "2.0"
 	r.Id = 0
 	r.Result = nil
 	r.Error = nil
@@ -80,6 +84,10 @@ func (c *clientCodec) ReadResponseHeader(r *rpc.Response) error {
 	r.ServiceMethod = c.pending[c.resp.Id]
 	delete(c.pending, c.resp.Id)
 	c.mutex.Unlock()
+
+	if c.resp.Jsonrpc != "2.0" {
+		return fmt.Errorf("invalid jsonrpc version string: %q", c.resp.Jsonrpc)
+	}
 
 	r.Error = ""
 	r.Seq = c.resp.Id

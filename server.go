@@ -13,6 +13,7 @@ import (
 )
 
 var errMissingParams = errors.New("jsonrpc: request body missing params")
+var errInvalidJsonrpcVersion = errors.New("jsonrpc: invalid version string recieved")
 
 type serverCodec struct {
 	dec *json.Decoder // for reading JSON values
@@ -44,21 +45,24 @@ func NewServerCodec(conn io.ReadWriteCloser) rpc.ServerCodec {
 }
 
 type serverRequest struct {
-	Method string           `json:"method"`
-	Params *json.RawMessage `json:"params"`
-	Id     *json.RawMessage `json:"id"`
+	Jsonrpc string           `json:"jsonrpc"`
+	Method  string           `json:"method"`
+	Params  *json.RawMessage `json:"params"`
+	Id      *json.RawMessage `json:"id"`
 }
 
 func (r *serverRequest) reset() {
+	r.Jsonrpc = ""
 	r.Method = ""
 	r.Params = nil
 	r.Id = nil
 }
 
 type serverResponse struct {
-	Id     *json.RawMessage `json:"id"`
-	Result interface{}      `json:"result"`
-	Error  interface{}      `json:"error"`
+	Jsonrpc string           `json:"jsonrpc"`
+	Id      *json.RawMessage `json:"id"`
+	Result  interface{}      `json:"result"`
+	Error   interface{}      `json:"error"`
 }
 
 func (c *serverCodec) ReadRequestHeader(r *rpc.Request) error {
@@ -88,13 +92,10 @@ func (c *serverCodec) ReadRequestBody(x interface{}) error {
 	if c.req.Params == nil {
 		return errMissingParams
 	}
-	// JSON params is array value.
-	// RPC params is struct.
-	// Unmarshal into array containing struct for now.
-	// Should think about making RPC more general.
-	var params [1]interface{}
-	params[0] = x
-	return json.Unmarshal(*c.req.Params, &params)
+	if c.req.Jsonrpc != "2.0" {
+		return errInvalidJsonrpcVersion
+	}
+	return json.Unmarshal(*c.req.Params, &x)
 }
 
 var null = json.RawMessage([]byte("null"))
@@ -114,6 +115,7 @@ func (c *serverCodec) WriteResponse(r *rpc.Response, x interface{}) error {
 		b = &null
 	}
 	resp := serverResponse{Id: b}
+	resp.Jsonrpc = "2.0"
 	if r.Error == "" {
 		resp.Result = x
 	} else {

@@ -100,7 +100,7 @@ func TestServerNoVersion(t *testing.T) {
 	go ServeConn(srv)
 	dec := json.NewDecoder(cli)
 
-	fmt.Fprintf(cli, `{"method": "Arith.Add", "id": "123", "params": [{"A": %d, "B": %d}]}`, 3, 4)
+	fmt.Fprintf(cli, `{"method": "Arith.Add", "id": "123", "params": {"A": %d, "B": %d}}`, 3, 4)
 	var resp ArithAddResp
 	if err := dec.Decode(&resp); err != nil {
 		t.Fatalf("Decode after no version string: %s", err)
@@ -116,7 +116,7 @@ func TestServerInvalidVersion(t *testing.T) {
 	go ServeConn(srv)
 	dec := json.NewDecoder(cli)
 
-	fmt.Fprintf(cli, `{"jsonrpc": "invalid", "method": "Arith.Add", "id": "123", "params": [{"A": %d, "B": %d}]}`, 3, 4)
+	fmt.Fprintf(cli, `{"jsonrpc": "invalid", "method": "Arith.Add", "id": "123", "params": {"A": %d, "B": %d}}`, 3, 4)
 	var resp ArithAddResp
 	if err := dec.Decode(&resp); err != nil {
 		t.Fatalf("Decode after invalid version string: %s", err)
@@ -134,7 +134,7 @@ func TestServer(t *testing.T) {
 
 	// Send hand-coded requests to server, parse responses.
 	for i := 0; i < 10; i++ {
-		fmt.Fprintf(cli, `{"jsonrpc":"2.0","method": "Arith.Add", "id": "\u%04d", "params": [{"A": %d, "B": %d}]}`, i, i, i+1)
+		fmt.Fprintf(cli, `{"jsonrpc":"2.0","method": "Arith.Add", "id": "\u%04d", "params": {"A": %d, "B": %d}}`, i, i, i+1)
 		var resp ArithAddResp
 		err := dec.Decode(&resp)
 		if err != nil {
